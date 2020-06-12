@@ -7,7 +7,7 @@
 ## Use builder image
 
 ``` bash
-$ cd xuperchain
+$ cd moschain
 $ # centos environment
 $ docker run --rm -u `id -u`:`id -g` -v `pwd`:`pwd` -w `pwd` xuper/centos-builder:0.1 make
 $ # ubuntu environment
