@@ -1,0 +1,46 @@
+# Project specific files
+core/plugins/
+core/output/
+core/xvm/compile/wabt/build/
+core/contractsdk/cpp/build
+output*
+event_client
+
+# Compiled source
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+*.d
+
+# OSX trash
+.DS_Store
+
+# vim
+.*.sw*
+
+# vscode
+.vscode
+
+# Go test binaries
+*.test
+
+# idea
+.idea
+
+# Log files
+*.log
+*.log.wf
+
+front/
+visual/
+cc/
+.github/
+!vendor/*
+CONTRIBUTING.md
+CONTRIBUTING_CN.md
+LICENSE
+wasm2c
+.null
