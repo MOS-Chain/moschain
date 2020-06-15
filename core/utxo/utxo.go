@@ -872,21 +872,8 @@ func (uv *UtxoVM) PreExec(req *pb.InvokeRPCRequest, hd *global.XContext) (*pb.In
 
 		rsps := &pb.InvokeResponse{}
 
-		/*todo bug:如果用户自己伪造了一个请求，则可跳过判断；比如
-
-		fake.json
-		{
-		    "module": "xkernel",
-		    "method": "",
-		    "args": {}
-		}
-
-		./xchain-cli transfer --to=dpzuVdosQrF2kmzumhVeFQZa1aYcdgFpN --desc=fake.json --amount=100
-
-		*/
-
 		switch v.ModuleName {
-		case "transfer": //是转账操作，判断手续费
+		case "transfer", "kernel": //判断手续费
 			//fee := uv.ledger.GetTransferFeeAmount() //只用创世时的配置金额
 			fee := uv.GetTransferFeeAmount() //可以更新的配置金额
 			amount, _ := strconv.ParseInt(v.Amount, 10, 64)
@@ -896,15 +883,9 @@ func (uv *UtxoVM) PreExec(req *pb.InvokeRPCRequest, hd *global.XContext) (*pb.In
 			rsps.GasUsed = amount
 			return rsps, nil
 
-		case "kernel": //创建平行链
-			if string(v.Args["bcname"]) != string(v.Args["to"]) {
-				return nil, errors.New("only transfer to blockchain")
-			}
-			return rsps, nil
-
-		case "tdpos", "proposal": //投票/撤票或提选人/换共识
+		case "tdpos", "proposal": //投票/撤票 或 提选人/换共识
 			if req.Initiator != string(v.Args["to"]) {
-				return nil, errors.New("only transfer to your safe")
+				return nil, errors.New("only transfer to yourself")
 			}
 			return rsps, nil
 		}
@@ -1465,8 +1446,61 @@ func (uv *UtxoVM) doTxAsync(tx *pb.Transaction) error {
 	return nil
 }
 
+//校验转账手续费
+func (uv *UtxoVM) VerifyTxFee(tx *pb.Transaction) bool {
+
+	//普通转账
+	//1.可以转账给别人，但必须有手续费
+	//2.没有手续费的收款人必须是自己
+	if tx.ContractRequests == nil {
+		//判断有无手续费
+		for _, v := range tx.TxOutputs {
+			if string(v.ToAddr) == FeePlaceholder {
+				//手续费价格匹配
+				amount := big.NewInt(0).SetBytes(v.Amount)
+				if amount.Int64() >= uv.GetTransferFeeAmount() {
+					return true
+				}
+			}
+		}
+
+		//没有手续费，判断收款人
+		for _, v := range tx.TxOutputs {
+			if string(v.ToAddr) != tx.Initiator {
+				return false
+			}
+		}
+		return true
+	}
+
+	//其他交易
+	//1.utxo输出是否为空
+	//2.交易是否支付了手续费
+	if tx.TxOutputs == nil {
+		return true
+	}
+	for _, v := range tx.TxOutputs {
+		if string(v.ToAddr) == FeePlaceholder {
+			return true
+		}
+	}
+	//无币模式的判断
+	for _, v := range tx.TxOutputs {
+		amount := big.NewInt(0).SetBytes(v.Amount)
+		if amount.Int64() != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // VerifyTx check the tx signature and permission
 func (uv *UtxoVM) VerifyTx(tx *pb.Transaction) (bool, error) {
+
+	if !uv.VerifyTxFee(tx) {
+		return false, errors.New("you not input fee or transfer address invalid")
+	}
+
 	if uv.asyncMode || uv.asyncBlockMode {
 		return true, nil //异步模式推迟到后面校验
 	}

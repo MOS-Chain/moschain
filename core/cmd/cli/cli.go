@@ -406,7 +406,7 @@ func assembleTxSupportAccount(ctx context.Context, client pb.XchainClient, opt *
 
 		//只能转账给自己和平行链
 		if initAddr != opt.To && opt.To != bcname {
-			return nil, errors.New("only transfer to your safe")
+			return nil, errors.New("only transfer to yourself")
 		}
 
 		//允许的请求列表
@@ -434,9 +434,9 @@ func assembleTxSupportAccount(ctx context.Context, client pb.XchainClient, opt *
 					preExeRPCReq.Requests = append(preExeRPCReq.Requests, &pb.InvokeRequest{
 						ModuleName: module,
 						Args: map[string][]byte{
-							"to":     []byte(opt.To), //收款人地址
-							"bcname": []byte(bcname), //平行链名
+							"to": []byte(opt.To), //收款人地址
 						},
+						Amount: opt.Fee, //创建平行链也要手续费
 					})
 					break allow
 				}

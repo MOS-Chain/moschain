@@ -545,7 +545,7 @@ func (c *CommTrans) GenerateMultisigGenRawTx(ctx context.Context) error {
 		return err
 	}
 	if c.To != "" && c.To != from {
-		return errors.New("only transfer to your safe")
+		return errors.New("only transfer to yourself")
 	}
 
 	tx, err := c.GenerateTx(ctx)
