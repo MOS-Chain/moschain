@@ -1148,6 +1148,22 @@ func (xc *XChainCore) QueryUtxoRecord(accountName string, displayCount int64) (*
 	return utxoRecord, nil
 }
 
+//查询某账户的所有交易
+func (xc *XChainCore) QueryAccountTxs(accountName string, pageNum, displayCount int64) (*pb.AccountTxs, error) {
+	txs := &pb.AccountTxs{Header: &pb.Header{}}
+	if xc == nil {
+		return txs, errors.New("xchaincore is nil")
+	}
+	if xc.Status() != global.Normal {
+		return txs, ErrNotReady
+	}
+	txs, err := xc.Utxovm.QueryAccountTxs(accountName, pageNum, displayCount)
+	if err != nil {
+		return txs, err
+	}
+	return txs, nil
+}
+
 // QueryAccountContainAK get all accounts contain a specific address
 func (xc *XChainCore) QueryAccountContainAK(address string) ([]string, error) {
 	if xc == nil {

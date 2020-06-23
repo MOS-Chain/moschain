@@ -1,0 +1,22 @@
+{
+  "module": "proposal",
+  "method": "Propose",
+  "args" : {
+    "min_vote_percent": 51,
+    "stop_vote_height": 5800
+  },
+  "trigger": {
+    "height": 5810,
+    "module": "consensus",
+    "method": "update_consensus",
+    "args" : {
+      "name": "pow",
+      "config": {
+        "defaultTarget": "22",
+        "adjustHeightGap": "10",
+        "expectedPeriod": "15",
+        "maxTarget": "0"
+      }
+    }
+  }
+}

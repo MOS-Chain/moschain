@@ -197,6 +197,12 @@ func GenUtxoKeyWithPrefix(addr []byte, txid []byte, offset int32) string {
 	return pb.UTXOTablePrefix + baseUtxoKey
 }
 
+//address_&time_txid 选择&作为前缀符号，它accii码中比较靠前
+func GenUtxoTimeKey(utxoKey string) string {
+	arr := strings.Split(utxoKey, "_")
+	return fmt.Sprintf("%s_&%d_%s", arr[0], time.Now().UnixNano(), arr[1])
+}
+
 // checkInputEqualOutput 校验交易的输入输出是否相等
 func (uv *UtxoVM) checkInputEqualOutput(tx *pb.Transaction) error {
 	// first check outputs
@@ -769,6 +775,9 @@ func (uv *UtxoVM) SelectUtxos(fromAddr string, fromPubKey string, totalNeed *big
 		for it.Next() {
 			key := append([]byte{}, it.Key()...)
 			uBinary := it.Value()
+			if len(uBinary) == 0 {
+				continue
+			}
 			uItem := &UtxoItem{}
 			uErr := uItem.Loads(uBinary)
 			if uErr != nil {
@@ -1194,6 +1203,9 @@ func (uv *UtxoVM) payFee(tx *pb.Transaction, batch kvdb.Batch, block *pb.Interna
 		uv.addBalance(addr, uItem.Amount)
 		uv.utxoCache.Insert(string(addr), utxoKey, uItem)
 		uv.xlog.Trace("    insert fee utxo key", "utxoKey", utxoKey, "amount", uItem.Amount.String())
+
+		timeKey := GenUtxoTimeKey(utxoKey)
+		batch.Put([]byte(timeKey), []byte{})
 	}
 	return nil
 }
@@ -1211,6 +1223,9 @@ func (uv *UtxoVM) undoPayFee(tx *pb.Transaction, batch kvdb.Batch, block *pb.Int
 		uv.utxoCache.Remove(string(addr), utxoKey)
 		uv.subBalance(addr, big.NewInt(0).SetBytes(txOutput.Amount))
 		uv.xlog.Info("    undo delete fee utxo key", "utxoKey", utxoKey)
+
+		timeKey := GenUtxoTimeKey(utxoKey)
+		batch.Delete([]byte(timeKey))
 	}
 	return nil
 }
@@ -1245,6 +1260,9 @@ func (uv *UtxoVM) doTxInternal(tx *pb.Transaction, batch kvdb.Batch, cacheFiller
 		if !uv.asyncMode {
 			uv.xlog.Trace("    delete utxo key", "utxoKey", utxoKey)
 		}
+
+		timeKey := GenUtxoTimeKey(utxoKey)
+		batch.Delete([]byte(timeKey))
 	}
 	for offset, txOutput := range tx.TxOutputs {
 		addr := txOutput.ToAddr
@@ -1252,6 +1270,10 @@ func (uv *UtxoVM) doTxInternal(tx *pb.Transaction, batch kvdb.Batch, cacheFiller
 			continue
 		}
 		utxoKey := GenUtxoKeyWithPrefix(addr, tx.Txid, int32(offset))
+
+		timeKey := GenUtxoTimeKey(utxoKey)
+		batch.Put([]byte(timeKey), []byte{})
+
 		uItem := &UtxoItem{}
 		uItem.Amount = big.NewInt(0)
 		uItem.Amount.SetBytes(txOutput.Amount)
@@ -1313,6 +1335,9 @@ func (uv *UtxoVM) undoTxInternal(tx *pb.Transaction, batch kvdb.Batch) error {
 		uv.unlockKey([]byte(utxoKey))
 		uv.addBalance(addr, uItem.Amount)
 		uv.xlog.Trace("    undo insert utxo key", "utxoKey", utxoKey)
+
+		timeKey := GenUtxoTimeKey(utxoKey)
+		batch.Put([]byte(timeKey), []byte{})
 	}
 	for offset, txOutput := range tx.TxOutputs {
 		addr := txOutput.ToAddr
@@ -1334,6 +1359,9 @@ func (uv *UtxoVM) undoTxInternal(tx *pb.Transaction, batch kvdb.Batch) error {
 			delta.SetBytes(txOutput.Amount)
 			uv.updateUtxoTotal(delta, batch, false)
 		}
+
+		timeKey := GenUtxoTimeKey(utxoKey)
+		batch.Delete([]byte(timeKey))
 	}
 	return nil
 }
@@ -2214,6 +2242,9 @@ func (uv *UtxoVM) getBalance(addr string) (*big.Int, error) {
 	defer it.Release()
 	for it.Next() {
 		uBinary := it.Value()
+		if len(uBinary) == 0 {
+			continue
+		}
 		uItem := &UtxoItem{}
 		uErr := uItem.Loads(uBinary)
 		if uErr != nil {
@@ -2283,6 +2314,9 @@ func (uv *UtxoVM) GetFrozenBalance(addr string) (*big.Int, error) {
 	defer it.Release()
 	for it.Next() {
 		uBinary := it.Value()
+		if len(uBinary) == 0 {
+			continue
+		}
 		uItem := &UtxoItem{}
 		uErr := uItem.Loads(uBinary)
 		if uErr != nil {
@@ -2309,6 +2343,9 @@ func (uv *UtxoVM) GetBalanceDetail(addr string) ([]*pb.TokenFrozenDetail, error)
 	defer it.Release()
 	for it.Next() {
 		uBinary := it.Value()
+		if len(uBinary) == 0 {
+			continue
+		}
 		uItem := &UtxoItem{}
 		uErr := uItem.Loads(uBinary)
 		if uErr != nil {
@@ -2563,6 +2600,9 @@ func (uv *UtxoVM) QueryUtxoRecord(accountName string, displayCount int64) (*pb.U
 	frozenItem := []*pb.UtxoKey{}
 
 	for it.Next() {
+		if len(it.Value()) == 0 {
+			continue
+		}
 		key := append([]byte{}, it.Key()...)
 		utxoItem := new(UtxoItem)
 		uErr := utxoItem.Loads(it.Value())
@@ -2625,6 +2665,94 @@ func MakeUtxoKey(key []byte, amount string) *pb.UtxoKey {
 		Offset:  string(keyTuple[len(keyTuple)-1]),
 		Amount:  amount,
 	}
-
 	return tmpUtxoKey
+}
+
+//查询某账户的所有交易
+func (uv *UtxoVM) QueryAccountTxs(accountName string, pageNum, displayCount int64) (*pb.AccountTxs, error) {
+	txs := &pb.AccountTxs{
+		Header: &pb.Header{},
+		Txs:    make([]*pb.Transaction, 0),
+	}
+
+	//偏移量
+	count := pageNum * displayCount
+
+	//通过前缀查找
+	addrPrefix := fmt.Sprintf("%s%s_&", pb.UTXOTablePrefix, accountName)
+	it := uv.ldb.NewIteratorWithPrefix([]byte(addrPrefix))
+	defer it.Release()
+
+	//逆序查询
+	for it.Last(); it.Key() != nil; it.Prev() {
+		if count--; count < 0 {
+			break
+		}
+		//只要最后的记录
+		if count-displayCount > 0 {
+			continue
+		}
+
+		//根据交易id查询
+		key := append([]byte{}, it.Key()...)
+		keyTuple := bytes.Split(key, []byte("_"))          //Uaddr_&time_txid
+		txid, err := hex.DecodeString(string(keyTuple[2])) //最后一个就是txid
+		if err != nil {
+			return nil, err
+		}
+		tx, err := uv.ledger.QueryTransaction(txid)
+		if err != nil {
+			return nil, err
+		}
+
+		//简化输出
+		simpleTx := &pb.Transaction{
+			Txid:      tx.Txid,
+			Blockid:   tx.Blockid,
+			Initiator: tx.Initiator,
+			Timestamp: tx.Timestamp,
+			TxOutputs: make([]*pb.TxOutput, 0),
+		}
+
+		//交易输出
+		for _, v := range tx.TxOutputs {
+			//忽略找零
+			//if string(v.ToAddr) == tx.Initiator {
+			//	continue
+			//}
+			simpleTx.TxOutputs = append(simpleTx.TxOutputs, &pb.TxOutput{
+				Amount: v.Amount,
+				ToAddr: v.ToAddr,
+			})
+		}
+
+		//系统交易（挖矿或投票）
+		if simpleTx.Initiator == "" {
+			simpleTx.Initiator = "System"
+		}
+
+		//todo 该笔交易所在区块，暂时用区块id这个字段代替先
+		block, err := uv.ledger.QueryBlock(tx.Blockid)
+		if err != nil {
+			return nil, err
+		}
+		blockNum := hex.EncodeToString([]byte(strconv.FormatInt(block.Height, 10)))
+		simpleTx.Blockid, err = hex.DecodeString(blockNum)
+		if err != nil {
+			return nil, err
+		}
+
+		//交易输入
+		for _, v := range tx.TxInputs {
+			simpleTx.TxInputs = append(simpleTx.TxInputs, &pb.TxInput{
+				Amount:   v.Amount,
+				FromAddr: v.FromAddr,
+			})
+		}
+
+		//生成列表
+		txs.Txs = append(txs.Txs, simpleTx)
+	}
+
+	return txs, it.Error()
 }

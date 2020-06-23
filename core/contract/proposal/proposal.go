@@ -474,6 +474,10 @@ func (prp *Proposal) runThaw(desc *contract.TxDesc, block *pb.InternalBlock) err
 			prp.context.UtxoBatch.Put([]byte(utxoKey), uItemBinary)
 			// 清理utxo_cache缓存
 			prp.utxoVM.RemoveUtxoCache(string(txOutput.ToAddr), string(utxoKey))
+
+			//记录交易产生时间
+			timeKey := utxo.GenUtxoTimeKey(utxoKey)
+			prp.context.UtxoBatch.Put([]byte(timeKey), []byte{})
 		}
 	}
 

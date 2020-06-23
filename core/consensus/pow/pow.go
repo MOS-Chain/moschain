@@ -269,7 +269,11 @@ func (pc *PowConsensus) calDifficulty(curBlock *pb.InternalBlock) int32 {
 		newTargetBits := int32(difficulty.BitLen() - 1)
 		if newTargetBits > pc.config.maxTarget {
 			pc.log.Info("retarget", "newTargetBits", newTargetBits)
-			newTargetBits = pc.config.maxTarget
+			//比特币的最高难度
+			//consensus.powLimit = uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+			if pc.config.maxTarget != 0 {
+				newTargetBits = pc.config.maxTarget
+			}
 		}
 		pc.log.Info("adjust targetBits", "height", height, "targetBits", newTargetBits, "prevTargetBits", prevTargetBits)
 		return newTargetBits

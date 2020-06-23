@@ -149,6 +149,33 @@ func (s *server) QueryUtxoRecord(ctx context.Context, in *pb.UtxoRecordDetail) (
 	return out, nil
 }
 
+//查询某账户的所有交易
+func (s *server) QueryAccountTxs(ctx context.Context, in *pb.AccountTxs) (*pb.AccountTxs, error) {
+	s.mg.Speed.Add("QueryAccountTxs")
+	if in.GetHeader() == nil {
+		in.Header = global.GHeader()
+	}
+	out := &pb.AccountTxs{Header: &pb.Header{}}
+	bc := s.mg.Get(in.GetBcname())
+
+	if bc == nil {
+		out.Header.Error = pb.XChainErrorEnum_CONNECT_REFUSE
+		s.log.Trace("refuse a connection at function call QueryAccountTxs", "logid", in.Header.Logid)
+		return out, nil
+	}
+
+	accountName := in.GetAccountName()
+	if len(accountName) > 0 {
+		txs, err := bc.QueryAccountTxs(accountName, in.GetPageNum(),in.GetDisplayCount())
+		if err != nil {
+			return out, err
+		}
+		return txs, nil
+	}
+
+	return out, nil
+}
+
 // QueryAcl query some account info
 func (s *server) QueryACL(ctx context.Context, in *pb.AclStatus) (*pb.AclStatus, error) {
 	s.mg.Speed.Add("QueryAcl")

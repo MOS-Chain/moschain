@@ -1,0 +1,28 @@
+{
+  "module": "proposal",
+  "method": "Propose",
+  "args" : {
+    "min_vote_percent": 51,
+    "stop_vote_height": 99
+  },
+  "trigger": {
+    "height": 100,
+    "module": "consensus",
+    "method": "update_consensus",
+    "args" : {
+      "name": "tdpos",
+      "config": {
+        "version":"2",
+        "proposer_num":"2",
+        "period":"3000",
+        "alternate_interval":"6000",
+        "term_interval":"9000",
+        "block_num":"20",
+        "vote_unit_price":"1",
+        "init_proposer": {
+          "1":["dpzuVdosQrF2kmzumhVeFQZa1aYcdgFpN", "xx"]
+        }
+      }
+    }
+  }
+}

@@ -256,6 +256,14 @@ service Xchain {
       body : "*"
     };
   }
+
+  //查询某账户的所有交易
+  rpc QueryAccountTxs(AccountTxs) returns (AccountTxs) {
+    option (google.api.http) = {
+      post : "/v1/query_account_txs"
+      body : "*"
+    };
+  }
 }
 
 message Header {
@@ -339,9 +347,9 @@ message BlockHeight {
   int64 height = 2;
 }
 
-message CommonReply { Header header = 1; }
+message CommonReply {Header header = 1;}
 
-message CommonIn { Header header = 1; }
+message CommonIn {Header header = 1;}
 
 message TokenDetail {
   string bcname = 1;
@@ -563,7 +571,7 @@ message Speeds {
   map<string, BCSpeeds> BcSpeeds = 2;
 }
 
-message BCSpeeds { map<string, double> BcSpeed = 1; }
+message BCSpeeds {map<string, double> BcSpeed = 1;}
 
 message SystemsStatus {
   Header header = 1;
@@ -655,7 +663,7 @@ message DeployNativeCodeRequest {
   bytes sign = 7;
 }
 
-message DeployNativeCodeResponse { Header header = 1; }
+message DeployNativeCodeResponse {Header header = 1;}
 
 message NativeCodeStatus {
   NativeCodeDesc desc = 1;
@@ -905,7 +913,7 @@ message IdentityAuth {
 }
 
 // Identity authentication requests
-message IdentityAuths { repeated IdentityAuth auth = 1; }
+message IdentityAuths {repeated IdentityAuth auth = 1;}
 
 enum ResourceType {
   CPU = 0;
@@ -1047,7 +1055,7 @@ message AddressContractsRequest {
   bool need_content = 4;
 }
 
-message ContractList { repeated ContractStatus contract_status = 1; }
+message ContractList {repeated ContractStatus contract_status = 1;}
 
 // Query address contracts response
 message AddressContractsResponse {
@@ -1088,4 +1096,14 @@ message CrossQueryInfo {
   CrossQueryRequest request = 1;
   CrossQueryResponse response = 2;
   repeated SignatureInfo signs = 3;
+}
+
+//某账户的所有交易
+message AccountTxs {
+  Header header = 1;
+  string bcname = 2;
+  string accountName = 3;
+  int64 pageNum = 4;
+  int64 displayCount = 5;
+  repeated Transaction txs = 6;
 }

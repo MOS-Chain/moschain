@@ -30,6 +30,7 @@ p2p:
   #certPath: ./data/tls/1
   #serviceName: saas_test.server.com
   #bootNodes:
+  #  - "/ip4/127.0.0.1/tcp/47101/p2p/QmVxeNubpg1ZQjQT8W5yZC9fD7ZB1ViArwvyGUB53sqf8e"
   #  - "/ip4/<ip>/tcp/<port>/p2p/<node_hash>" for p2pv2 or - "<ip>:<port>" for p2pv1
   #staticNodes:
   #  xuper:
@@ -54,7 +55,7 @@ utxo:
   cachesize: 2000000
   # GenerateTx的临时锁定期限，默认是60秒
   tmplockSeconds: 60
-  #单个块的合约执行的总时间(单位ms)
+  # 单个块的合约执行的总时间(单位ms)
   contractExecutionTime: 500
 
 kernel:
@@ -93,6 +94,7 @@ pluginConfPath: "./conf/plugins.conf"
 # 是否启用p2p核心节点直连
 coreConnection: false
 
+# 交易id在缓存池的过期时间
 txidCacheExpiredTime: "10s"
 
 # 是否压缩交易/区块
@@ -108,12 +110,15 @@ prune:
   targetBlockid: "xxx"
 
 # wasm合约配置
-
 wasm:
   driver: "xvm"
+  # 允许升级合约
   enableUpgrade: true
   xvm:
     optLevel: 0
 
 # 是否开启默认的XEndorser背书服务
 enableXEndorser: true
+
+# 开启事件订阅服务
+pubsubService: true

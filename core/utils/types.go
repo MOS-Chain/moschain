@@ -2,7 +2,7 @@
  * Copyright (c) 2019. Baidu Inc. All Rights Reserved.
  */
 
-package main
+package utils
 
 import (
 	"crypto/md5"
@@ -531,10 +531,10 @@ func SumHash(tx *pb.Transaction) error {
 
 func FromSimpleTx(tx *pb.Transaction) *Transaction {
 	t := &Transaction{
-		Txid:              tx.Txid,
-		Blockid:           tx.Blockid,
-		Timestamp:         tx.Timestamp,
-		Initiator:         tx.Initiator,
+		Txid:      tx.Txid,
+		Blockid:   tx.Blockid,
+		Timestamp: tx.Timestamp,
+		Initiator: tx.Initiator,
 	}
 	for _, output := range tx.TxOutputs {
 		t.TxOutputs = append(t.TxOutputs, TxOutput{
@@ -545,15 +545,14 @@ func FromSimpleTx(tx *pb.Transaction) *Transaction {
 	return t
 }
 
-func FromSimpleTxs(txs []*pb.Transaction) string {
+func FromSimpleTxs(txs []*pb.Transaction) []*Transaction {
 	tempTxs := []*Transaction{}
-	var output []byte
 	for _, v := range txs {
 		tx := &Transaction{
-			Txid:              v.Txid,
-			Blockid:           v.Blockid,
-			Timestamp:         v.Timestamp,
-			Initiator:         v.Initiator,
+			Txid:      v.Txid,
+			Blockid:   v.Blockid,
+			Timestamp: v.Timestamp,
+			Initiator: v.Initiator,
 		}
 		for _, output := range v.TxOutputs {
 			tx.TxOutputs = append(tx.TxOutputs, TxOutput{
@@ -562,7 +561,6 @@ func FromSimpleTxs(txs []*pb.Transaction) string {
 			})
 		}
 		tempTxs = append(tempTxs, tx)
-		output, _ = json.MarshalIndent(tempTxs, "", "  ")
 	}
-	return string(output)
+	return tempTxs
 }
